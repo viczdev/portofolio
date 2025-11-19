@@ -1,6 +1,6 @@
 {
-    "name": "The Porto",
-    "short_name": "The Porto",
+    "name": "My Porto",
+    "short_name": "My Porto",
     "start_url": "index.html",
     "display": "fullscreen",
     "background_color": "#231F20",

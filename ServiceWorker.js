@@ -1,9 +1,9 @@
-const cacheName = "Vicz-The Porto-1.0";
+const cacheName = "Vicz-My Porto-1.0.0";
 const contentToCache = [
-    "Build/Build.loader.js",
-    "Build/Build.framework.js",
-    "Build/Build.data",
-    "Build/Build.wasm",
+    "Build/portofolio.loader.js",
+    "Build/portofolio.framework.js.br",
+    "Build/portofolio.data.br",
+    "Build/portofolio.wasm.br",
     "TemplateData/style.css"
 
 ];
