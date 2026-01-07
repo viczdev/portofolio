@@ -17,6 +17,20 @@
         background: #000;
       }
 
+      @font-face {
+        font-family: "Mohave";
+        src: url("fonts/Mohave-Medium.ttf") format("truetype");
+        font-weight: normal;
+        font-style: normal;
+      }
+
+      #version-text {
+        margin-top: 6px;
+        font-size: 11px;
+        opacity: 0.5;
+        font-family: "Mohave", Arial, sans-serif;
+      }
+
       #unity-container {
         position: fixed;
         inset: 0;
@@ -65,6 +79,7 @@
 
       #status {
         margin-top: 10px;
+        font-family: "Mohave", Arial, sans-serif;
         font-size: 14px;
         opacity: 0.8;
       }
@@ -77,6 +92,7 @@
         <img src="images/splash.png" alt="Logo" />
         <div id="progress"><div></div></div>
         <div id="status">Loading...</div>
+        <div id="version-text"></div>
       </div>
 
       <canvas id="unity-canvas"></canvas>
@@ -100,14 +116,16 @@
       }
 
       localStorage.setItem(BUILD_KEY, buildNumber);
-      const FINAL_VERSION = `${RELEASE_VERSION}-${buildNumber}`;
+      const FINAL_VERSION = Date.now().toString();
+      const versionText = document.getElementById("version-text");
+      versionText.textContent = `v${FINAL_VERSION}`;
       console.log("WebGL Version:", FINAL_VERSION);
     </script>
 
     <!-- ================================
        UNITY LOADER
        ================================ -->
-    <script src="Build/InternalTest.loader.js"></script>
+    <script src="Build/InternalTest.loader.js?v=" + FINAL_VERSION></script>
 
     <!-- ================================
        UNITY BOOTSTRAP
@@ -118,9 +136,9 @@
       const progressBar = document.querySelector("#progress div");
 
       const config = {
-        dataUrl: "Build/InternalTest.data",
-        frameworkUrl: "Build/InternalTest.framework.js",
-        codeUrl: "Build/InternalTest.wasm",
+        dataUrl: "Build/InternalTest.data?v=" + FINAL_VERSION,
+        frameworkUrl: "Build/InternalTest.framework.js?v=" + FINAL_VERSION,
+        codeUrl: "Build/InternalTest.wasm?v=" + FINAL_VERSION,
         streamingAssetsUrl: "StreamingAssets",
         companyName: "{{COMPANY_NAME}}",
         productName: "{{PRODUCT_NAME}}",
