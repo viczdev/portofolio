@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>My Porto</title>
+    <link rel="icon" type="image/png" href="favicon.png" />
+
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #000;
+      }
+
+      @font-face {
+        font-family: "Mohave";
+        src: url("fonts/Mohave-Medium.ttf") format("truetype");
+        font-weight: normal;
+        font-style: normal;
+      }
+
+      #version-text {
+        margin-top: 6px;
+        font-size: 11px;
+        opacity: 0.5;
+        font-family: "Mohave", Arial, sans-serif;
+      }
+
+      #unity-container {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      #unity-canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block;
+        background: #000;
+      }
+
+      #loader {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #1b1b1b;
+        color: #fff;
+        z-index: 10;
+      }
+
+      #loader img {
+        width: 160px;
+      }
+
+      #progress {
+        width: 300px;
+        height: 12px;
+        background: #333;
+        border-radius: 6px;
+        overflow: hidden;
+        margin-top: 20px;
+      }
+
+      #progress div {
+        height: 100%;
+        width: 0%;
+        background: #f5c400;
+        transition: width 0.2s;
+      }
+
+      #status {
+        margin-top: 10px;
+        font-family: "Mohave", Arial, sans-serif;
+        font-size: 14px;
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="unity-container">
+      <div id="loader">
+        <img src="images/splash.png" alt="Logo" />
+        <div id="progress"><div></div></div>
+        <div id="status">Loading...</div>
+        <div id="version-text"></div>
+      </div>
+
+      <canvas id="unity-canvas"></canvas>
+    </div>
+
+    <!-- ================================
+       VERSION + BUILD COUNTER
+       ================================ -->
+    <script>
+      const RELEASE_VERSION = "{{PRODUCT_VERSION}}";
+      const VERSION_KEY = "webgl_release_version";
+      const BUILD_KEY = "webgl_build_number";
+
+      let buildNumber = 1;
+      const storedVersion = localStorage.getItem(VERSION_KEY);
+
+      if (storedVersion === RELEASE_VERSION) {
+        buildNumber = parseInt(localStorage.getItem(BUILD_KEY) || "0", 10) + 1;
+      } else {
+        localStorage.setItem(VERSION_KEY, RELEASE_VERSION);
+      }
+
+      localStorage.setItem(BUILD_KEY, buildNumber);
+      const FINAL_VERSION = Date.now().toString();
+      const versionText = document.getElementById("version-text");
+      versionText.textContent = `v${FINAL_VERSION}`;
+      console.log("WebGL Version:", FINAL_VERSION);
+    </script>
+
+    <!-- ================================
+       UNITY LOADER
+       ================================ -->
+    <script src="Build/InternalTest.loader.js?v=" + FINAL_VERSION></script>
+
+    <!-- ================================
+       UNITY BOOTSTRAP
+       ================================ -->
+    <script>
+      const canvas = document.querySelector("#unity-canvas");
+      const loader = document.querySelector("#loader");
+      const progressBar = document.querySelector("#progress div");
+
+      const config = {
+        dataUrl: "Build/InternalTest.data?v=" + FINAL_VERSION,
+        frameworkUrl: "Build/InternalTest.framework.js?v=" + FINAL_VERSION,
+        codeUrl: "Build/InternalTest.wasm?v=" + FINAL_VERSION,
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "{{COMPANY_NAME}}",
+        productName: "{{PRODUCT_NAME}}",
+        productVersion: FINAL_VERSION,
+      };
+
+      createUnityInstance(canvas, config, (progress) => {
+        progressBar.style.width = progress * 100 + "%";
+      })
+        .then(() => {
+          loader.style.display = "none";
+          resizeCanvas();
+        })
+        .catch((err) => {
+          console.error(err);
+          alert(err);
+        });
+
+      function resizeCanvas() {
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+      }
+
+      window.addEventListener("resize", resizeCanvas);
+    </script>
+  </body>
+</html>
