@@ -83,6 +83,16 @@
         font-size: 14px;
         opacity: 0.8;
       }
+      #app-version {
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        color: white;
+        font-size: 12px;
+        opacity: 0.7;
+        z-index: 9999;
+        pointer-events: none;
+      }
     </style>
   </head>
 
@@ -97,6 +107,7 @@
 
       <canvas id="unity-canvas"></canvas>
     </div>
+    <div id="app-version"></div>
 
     <!-- ================================
        VERSION + BUILD COUNTER
@@ -163,6 +174,23 @@
       }
 
       window.addEventListener("resize", resizeCanvas);
+    </script>
+    <script>
+      // Version Update
+      const version = "1.2.2"; // Update this manually for each release
+
+      const internalVersion = version + "-" + Date.now();
+
+      // tampilkan ke UI
+      window.addEventListener("load", () => {
+        const el = document.getElementById("app-version");
+        if (el) el.innerText = "v" + version;
+      });
+
+      // load Unity
+      const script = document.createElement("script");
+      script.src = "Build/build.loader.js?v=" + internalVersion;
+      document.body.appendChild(script);
     </script>
   </body>
 </html>
