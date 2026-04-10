@@ -136,17 +136,49 @@
        * ============================================
        */
 
+      /**
+
+   * ============================================
+   * 🚀 BUILD VERSION SYSTEM
+   * ============================================
+   *
+   * - buildversion.txt = source of truth dari server
+   * - digunakan untuk:
+   *   ✔ cache busting
+   *   ✔ auto update detection
+   *
+   * ============================================
+   */
+
+      const DISPLAY_VERSION = "1.2.2"; // untuk UI saja
+      const VERSION_CHECK_INTERVAL = 15000;
+
+      let BUILD_VERSION = null;
+
       // ============================================
-      // 🔢 VERSION CONTROL
+      // 📥 LOAD BUILD VERSION FROM SERVER
       // ============================================
 
-      const DISPLAY_VERSION = "1.2.2"; // 🔧 UPDATE SETIAP BUILD
-      const INTERNAL_VERSION = DISPLAY_VERSION + "-" + Date.now(); // 🔥 AUTO CACHE BUSTER
-
-      console.log("🚀 WebGL Version:", INTERNAL_VERSION);
+      function fetchBuildVersion() {
+        return fetch("BuildVersion.txt?t=" + Date.now())
+          .then((res) => res.text())
+          .then((v) => v.trim());
+      }
 
       // ============================================
-      // 🖥️ UI: SHOW VERSION
+      // 🚀 INIT APP
+      // ============================================
+
+      fetchBuildVersion().then((serverVersion) => {
+        BUILD_VERSION = serverVersion;
+
+        console.log("🚀 Build Version:", BUILD_VERSION);
+
+        startApp();
+      });
+
+      // ============================================
+      // 🖥️ UI VERSION
       // ============================================
 
       window.addEventListener("load", () => {
@@ -155,21 +187,23 @@
       });
 
       // ============================================
-      // 📦 LOAD UNITY LOADER (DYNAMIC)
+      // 📦 LOAD UNITY
       // ============================================
 
-      const loaderScript = document.createElement("script");
-      loaderScript.src = "Build/devtest.loader.js?v=" + INTERNAL_VERSION;
+      function startApp() {
+        const loaderScript = document.createElement("script");
+        loaderScript.src = "Build/devtest.loader.js?v=" + BUILD_VERSION;
 
-      loaderScript.onload = () => {
-        console.log("✅ Loader loaded");
-        startUnity();
-      };
+        loaderScript.onload = () => {
+          console.log("✅ Loader loaded");
+          startUnity();
+        };
 
-      document.body.appendChild(loaderScript);
+        document.body.appendChild(loaderScript);
+      }
 
       // ============================================
-      // 🎮 START UNITY INSTANCE
+      // 🎮 START UNITY
       // ============================================
 
       function startUnity() {
@@ -178,12 +212,11 @@
         const progressBar = document.querySelector("#progress div");
 
         const config = {
-          dataUrl: "Build/devtest.data?v=" + INTERNAL_VERSION,
+          dataUrl: "Build/devtest.data?v=" + BUILD_VERSION,
 
-          frameworkUrl:
-            "Build/devtest.framework.js?v=" + INTERNAL_VERSION,
+          frameworkUrl: "Build/devtest.framework.js?v=" + BUILD_VERSION,
 
-          codeUrl: "Build/devtest.wasm?v=" + INTERNAL_VERSION,
+          codeUrl: "Build/devtest.wasm?v=" + BUILD_VERSION,
 
           streamingAssetsUrl: "StreamingAssets",
 
@@ -192,24 +225,43 @@
           productVersion: DISPLAY_VERSION,
         };
 
-        console.log("📦 Loading Unity with config:", config);
-
         createUnityInstance(canvas, config, (progress) => {
           progressBar.style.width = progress * 100 + "%";
         })
           .then(() => {
-            console.log("🎉 Unity Loaded");
             loader.style.display = "none";
             resizeCanvas();
+
+            // 🔄 start auto update
+            startVersionChecker();
           })
           .catch((err) => {
-            console.error("❌ Unity Load Error:", err);
+            console.error(err);
             alert(err);
           });
       }
 
       // ============================================
-      // 📐 RESPONSIVE CANVAS
+      // 🔄 AUTO UPDATE CHECKER
+      // ============================================
+
+      function startVersionChecker() {
+        console.log("🔄 Version checker started");
+
+        setInterval(() => {
+          fetchBuildVersion().then((latestVersion) => {
+            if (latestVersion !== BUILD_VERSION) {
+              console.log("🚨 New build detected:", latestVersion);
+
+              // 🔥 AUTO RELOAD
+              location.reload();
+            }
+          });
+        }, VERSION_CHECK_INTERVAL);
+      }
+
+      // ============================================
+      // 📐 RESPONSIVE
       // ============================================
 
       function resizeCanvas() {
@@ -219,30 +271,6 @@
       }
 
       window.addEventListener("resize", resizeCanvas);
-
-      // ============================================
-      // 🧪 DEBUG COMMANDS (OPTIONAL)
-      // ============================================
-
-      /**
-       * 👉 Pakai di console browser:
-       *
-       * clearCache()
-       * → force reload tanpa cache
-       *
-       * showVersion()
-       * → tampilkan versi sekarang
-       */
-
-      window.clearCache = () => {
-        console.log("🧹 Clearing cache (hard reload)...");
-        location.reload(true);
-      };
-
-      window.showVersion = () => {
-        console.log("📌 Display Version:", DISPLAY_VERSION);
-        console.log("📌 Internal Version:", INTERNAL_VERSION);
-      };
     </script>
   </body>
 </html>
