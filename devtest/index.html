@@ -108,89 +108,141 @@
       <canvas id="unity-canvas"></canvas>
     </div>
     <div id="app-version"></div>
-
-    <!-- ================================
-       VERSION + BUILD COUNTER
-       ================================ -->
     <script>
-      const RELEASE_VERSION = "{{PRODUCT_VERSION}}";
-      const VERSION_KEY = "webgl_release_version";
-      const BUILD_KEY = "webgl_build_number";
+      /**
+       * ============================================
+       * 🚀 COMMAND SUMMARY (READ THIS FIRST)
+       * ============================================
+       *
+       * [RELEASE FLOW]
+       * 1. Ubah DISPLAY_VERSION (manual)
+       * 2. Build Unity WebGL
+       * 3. Upload ke GitHub Pages
+       *
+       * [CACHE SYSTEM]
+       * - INTERNAL_VERSION = DISPLAY_VERSION + timestamp
+       * - Digunakan untuk bypass browser cache
+       *
+       * [FILES AFFECTED]
+       * - loader.js
+       * - .data
+       * - .framework.js
+       * - .wasm
+       *
+       * [UI]
+       * - DISPLAY_VERSION → ditampilkan ke user
+       * - INTERNAL_VERSION → hanya untuk system
+       *
+       * ============================================
+       */
 
-      let buildNumber = 1;
-      const storedVersion = localStorage.getItem(VERSION_KEY);
+      // ============================================
+      // 🔢 VERSION CONTROL
+      // ============================================
 
-      if (storedVersion === RELEASE_VERSION) {
-        buildNumber = parseInt(localStorage.getItem(BUILD_KEY) || "0", 10) + 1;
-      } else {
-        localStorage.setItem(VERSION_KEY, RELEASE_VERSION);
-      }
+      const DISPLAY_VERSION = "1.2.2"; // 🔧 UPDATE SETIAP BUILD
+      const INTERNAL_VERSION = DISPLAY_VERSION + "-" + Date.now(); // 🔥 AUTO CACHE BUSTER
 
-      localStorage.setItem(BUILD_KEY, buildNumber);
-      const FINAL_VERSION = Date.now().toString();
-      const versionText = document.getElementById("version-text");
-      // versionText.textContent = `v${FINAL_VERSION}`;
-      console.log("WebGL Version:", FINAL_VERSION);
-    </script>
+      console.log("🚀 WebGL Version:", INTERNAL_VERSION);
 
-    <!-- ================================
-       UNITY LOADER
-       ================================ -->
-    <script src="Build/devtest.loader.js?v=" + FINAL_VERSION></script>
+      // ============================================
+      // 🖥️ UI: SHOW VERSION
+      // ============================================
 
-    <!-- ================================
-       UNITY BOOTSTRAP
-       ================================ -->
-    <script>
-      const canvas = document.querySelector("#unity-canvas");
-      const loader = document.querySelector("#loader");
-      const progressBar = document.querySelector("#progress div");
+      window.addEventListener("load", () => {
+        const el = document.getElementById("app-version");
+        if (el) el.innerText = "v" + DISPLAY_VERSION;
+      });
 
-      const config = {
-        dataUrl: "Build/devtest.data?v=" + FINAL_VERSION,
-        frameworkUrl: "Build/devtest.framework.js?v=" + FINAL_VERSION,
-        codeUrl: "Build/devtest.wasm?v=" + FINAL_VERSION,
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "{{COMPANY_NAME}}",
-        productName: "{{PRODUCT_NAME}}",
-        productVersion: FINAL_VERSION,
+      // ============================================
+      // 📦 LOAD UNITY LOADER (DYNAMIC)
+      // ============================================
+
+      const loaderScript = document.createElement("script");
+      loaderScript.src = "Build/devtest.loader.js?v=" + INTERNAL_VERSION;
+
+      loaderScript.onload = () => {
+        console.log("✅ Loader loaded");
+        startUnity();
       };
 
-      createUnityInstance(canvas, config, (progress) => {
-        progressBar.style.width = progress * 100 + "%";
-      })
-        .then(() => {
-          loader.style.display = "none";
-          resizeCanvas();
+      document.body.appendChild(loaderScript);
+
+      // ============================================
+      // 🎮 START UNITY INSTANCE
+      // ============================================
+
+      function startUnity() {
+        const canvas = document.querySelector("#unity-canvas");
+        const loader = document.querySelector("#loader");
+        const progressBar = document.querySelector("#progress div");
+
+        const config = {
+          dataUrl: "Build/devtest.data?v=" + INTERNAL_VERSION,
+
+          frameworkUrl:
+            "Build/devtest.framework.js?v=" + INTERNAL_VERSION,
+
+          codeUrl: "Build/devtest.wasm?v=" + INTERNAL_VERSION,
+
+          streamingAssetsUrl: "StreamingAssets",
+
+          companyName: "{{COMPANY_NAME}}",
+          productName: "{{PRODUCT_NAME}}",
+          productVersion: DISPLAY_VERSION,
+        };
+
+        console.log("📦 Loading Unity with config:", config);
+
+        createUnityInstance(canvas, config, (progress) => {
+          progressBar.style.width = progress * 100 + "%";
         })
-        .catch((err) => {
-          console.error(err);
-          alert(err);
-        });
+          .then(() => {
+            console.log("🎉 Unity Loaded");
+            loader.style.display = "none";
+            resizeCanvas();
+          })
+          .catch((err) => {
+            console.error("❌ Unity Load Error:", err);
+            alert(err);
+          });
+      }
+
+      // ============================================
+      // 📐 RESPONSIVE CANVAS
+      // ============================================
 
       function resizeCanvas() {
+        const canvas = document.querySelector("#unity-canvas");
         canvas.style.width = "100%";
         canvas.style.height = "100%";
       }
 
       window.addEventListener("resize", resizeCanvas);
-    </script>
-    <script>
-      // Version Update
-      const version = "1.2.2"; // Update this manually for each release
 
-      const internalVersion = version + "-" + Date.now();
+      // ============================================
+      // 🧪 DEBUG COMMANDS (OPTIONAL)
+      // ============================================
 
-      // tampilkan ke UI
-      window.addEventListener("load", () => {
-        const el = document.getElementById("app-version");
-        if (el) el.innerText = "v" + version;
-      });
+      /**
+       * 👉 Pakai di console browser:
+       *
+       * clearCache()
+       * → force reload tanpa cache
+       *
+       * showVersion()
+       * → tampilkan versi sekarang
+       */
 
-      // load Unity
-      const script = document.createElement("script");
-      script.src = "Build/build.loader.js?v=" + internalVersion;
-      document.body.appendChild(script);
+      window.clearCache = () => {
+        console.log("🧹 Clearing cache (hard reload)...");
+        location.reload(true);
+      };
+
+      window.showVersion = () => {
+        console.log("📌 Display Version:", DISPLAY_VERSION);
+        console.log("📌 Internal Version:", INTERNAL_VERSION);
+      };
     </script>
   </body>
 </html>
