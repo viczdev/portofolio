@@ -6,6 +6,13 @@
     <title>My Porto</title>
     <link rel="icon" type="image/png" href="favicon.png" />
 
+    <meta
+      http-equiv="Cache-Control"
+      content="no-cache, no-store, must-revalidate"
+    />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+
     <style>
       html,
       body {
@@ -83,6 +90,17 @@
         font-size: 14px;
         opacity: 0.8;
       }
+      #app-version {
+        position: fixed;
+        bottom: 12px;
+        left: 14px;
+        color: #f5c400;
+        font-size: 11px;
+        opacity: 0.7;
+        z-index: 9999;
+        pointer-events: none;
+        font-family: "Mohave", Arial, sans-serif;
+      }
     </style>
   </head>
 
@@ -92,77 +110,181 @@
         <img src="images/splash.png" alt="Logo" />
         <div id="progress"><div></div></div>
         <div id="status"></div>
-        <div id="version-text"></div>
+        <!-- <div id="version-text"></div> -->
       </div>
 
       <canvas id="unity-canvas"></canvas>
     </div>
+    <div id="app-version"></div>
 
-    <!-- ================================
-       VERSION + BUILD COUNTER
-       ================================ -->
+    <!-- ===================================================== -->
+    <!-- 🚀 CONFIG SYSTEM -->
+    <!-- ===================================================== -->
     <script>
-      const RELEASE_VERSION = "{{PRODUCT_VERSION}}";
-      const VERSION_KEY = "webgl_release_version";
-      const BUILD_KEY = "webgl_build_number";
+      /**
+       * APP VERSION (MANUAL)
+       */
+      const APP_VERSION = "1.2.2";
 
-      let buildNumber = 1;
-      const storedVersion = localStorage.getItem(VERSION_KEY);
+      /**
+       * ENV DETECTION
+       * - LOCAL (localhost) → DEV
+       * - /devtest → DEV
+       * - selain itu → PROD
+       */
+      const IS_LOCAL =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1";
 
-      if (storedVersion === RELEASE_VERSION) {
-        buildNumber = parseInt(localStorage.getItem(BUILD_KEY) || "0", 10) + 1;
-      } else {
-        localStorage.setItem(VERSION_KEY, RELEASE_VERSION);
-      }
+      const IS_DEV = IS_LOCAL || window.location.pathname.includes("devtest");
 
-      localStorage.setItem(BUILD_KEY, buildNumber);
-      const FINAL_VERSION = Date.now().toString();
-      const versionText = document.getElementById("version-text");
-      // versionText.textContent = `v${FINAL_VERSION}`;
-      console.log("WebGL Version:", FINAL_VERSION);
+      /**
+       * BUILD FILE PATH
+       * (DEV dan PROD masing-masing ambil dari foldernya sendiri)
+       */
+      const BUILD_FILE = "buildversion.txt";
+
+      /**
+       * GLOBAL BUILD VERSION (SAFE INIT)
+       */
+      let BUILD_VERSION = "init-" + Date.now();
+
+      console.log("🌍 ENV:", IS_DEV ? "DEV" : "PROD");
     </script>
 
-    <!-- ================================
-       UNITY LOADER
-       ================================ -->
-    <script src="Build/portofolio.loader.js?v=" + FINAL_VERSION></script>
-
-    <!-- ================================
-       UNITY BOOTSTRAP
-       ================================ -->
+    <!-- ===================================================== -->
+    <!-- 📦 FETCH BUILD VERSION -->
+    <!-- ===================================================== -->
     <script>
-      const canvas = document.querySelector("#unity-canvas");
-      const loader = document.querySelector("#loader");
-      const progressBar = document.querySelector("#progress div");
+      async function fetchBuildVersion() {
+        try {
+          const res = await fetch(BUILD_FILE + "?t=" + Date.now(), {
+            cache: "no-store",
+          });
 
-      const config = {
-        dataUrl: "Build/portofolio.data?v=" + FINAL_VERSION,
-        frameworkUrl: "Build/portofolio.framework.js?v=" + FINAL_VERSION,
-        codeUrl: "Build/portofolio.wasm?v=" + FINAL_VERSION,
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "{{COMPANY_NAME}}",
-        productName: "{{PRODUCT_NAME}}",
-        productVersion: FINAL_VERSION,
-      };
+          if (!res.ok) throw new Error("Build version not found");
 
-      createUnityInstance(canvas, config, (progress) => {
-        progressBar.style.width = progress * 100 + "%";
-      })
-        .then(() => {
-          loader.style.display = "none";
-          resizeCanvas();
-        })
-        .catch((err) => {
-          console.error(err);
-          alert(err);
-        });
+          const text = await res.text();
+          BUILD_VERSION = text.trim();
 
-      function resizeCanvas() {
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
+          console.log("🚀 Build Version:", BUILD_VERSION);
+        } catch (err) {
+          console.warn("⚠️ Failed fetch build version:", err);
+        }
+
+        startUnity();
+        startAutoReload();
+        showVersion();
       }
+    </script>
 
-      window.addEventListener("resize", resizeCanvas);
+    <!-- ===================================================== -->
+    <!-- 🎮 START UNITY -->
+    <!-- ===================================================== -->
+    <script>
+      function startUnity() {
+        const canvas = document.querySelector("#unity-canvas");
+        const loader = document.querySelector("#loader");
+        const progressBar = document.querySelector("#progress div");
+
+        const buildUrl = "Build";
+
+        const config = {
+          dataUrl: buildUrl + "/portofolio.data?v=" + BUILD_VERSION,
+          frameworkUrl:
+            buildUrl + "/portofolio.framework.js?v=" + BUILD_VERSION,
+          codeUrl: buildUrl + "/portofolio.wasm?v=" + BUILD_VERSION,
+          streamingAssetsUrl: "StreamingAssets",
+          companyName: "{{COMPANY_NAME}}",
+          productName: "{{PRODUCT_NAME}}",
+          productVersion: BUILD_VERSION,
+        };
+
+        const script = document.createElement("script");
+        script.src = buildUrl + "/portofolio.loader.js?v=" + BUILD_VERSION;
+
+        script.onload = () => {
+          createUnityInstance(canvas, config, (progress) => {
+            progressBar.style.width = progress * 100 + "%";
+          })
+            .then(() => {
+              loader.style.display = "none";
+            })
+            .catch((err) => {
+              console.error(err);
+              alert(err);
+            });
+        };
+
+        document.body.appendChild(script);
+      }
+    </script>
+
+    <!-- ===================================================== -->
+    <!-- 🔄 AUTO RELOAD SYSTEM -->
+    <!-- ===================================================== -->
+    <script>
+      function startAutoReload() {
+        let lastVersion = BUILD_VERSION;
+
+        setInterval(async () => {
+          try {
+            const res = await fetch(BUILD_FILE + "?t=" + Date.now(), {
+              cache: "no-store",
+            });
+
+            const latest = (await res.text()).trim();
+
+            if (latest !== lastVersion) {
+              console.log("🔥 NEW BUILD DETECTED:", latest);
+
+              // clear browser cache (important for Unity WebGL)
+              if ("caches" in window) {
+                const keys = await caches.keys();
+                await Promise.all(keys.map((k) => caches.delete(k)));
+              }
+
+              location.reload();
+            }
+          } catch (e) {
+            console.warn("Auto reload check failed");
+          }
+        }, 5000); // cek tiap 5 detik
+      }
+    </script>
+
+    <!-- ===================================================== -->
+    <!-- 🧹 SERVICE WORKER CLEANUP (DEV ONLY SAFE) -->
+    <!-- ===================================================== -->
+    <script>
+      if ("serviceWorker" in navigator && IS_DEV) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((reg) => reg.unregister());
+        });
+      }
+    </script>
+
+    <!-- ===================================================== -->
+    <!-- 🏷 VERSION DISPLAY -->
+    <!-- ===================================================== -->
+    <script>
+      function showVersion() {
+        const el = document.getElementById("app-version");
+        if (!el) return;
+
+        if (IS_DEV) {
+          el.innerText = `Dev-${BUILD_VERSION} | v${APP_VERSION}`;
+        } else {
+          el.innerText = `v${APP_VERSION}`;
+        }
+      }
+    </script>
+
+    <!-- ===================================================== -->
+    <!-- 🚀 INIT -->
+    <!-- ===================================================== -->
+    <script>
+      fetchBuildVersion();
     </script>
   </body>
 </html>
