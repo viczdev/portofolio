@@ -121,32 +121,35 @@
     <!-- 🚀 CONFIG SYSTEM -->
     <!-- ===================================================== -->
     <script>
-      // Version
-      const VERSION = "1.0.0"; // Update this manually for each release
+      /**
+       * APP VERSION (MANUAL)
+       */
+      const APP_VERSION = "1.0.0";
+
       /**
        * ENV DETECTION
-       * - devtest → DEV
-       * - root → PROD
+       * - LOCAL (localhost) → DEV
+       * - /devtest → DEV
+       * - selain itu → PROD
        */
-      const ENV = window.location.pathname.includes("devtest")
-        ? "DEV-Build-" + BUILD_VERSION + " | "
-        : "";
+      const IS_LOCAL =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1";
+
+      const IS_DEV = IS_LOCAL || window.location.pathname.includes("devtest");
 
       /**
-       * BUILD FILE LOCATION
-       * - DEV  → /devtest/buildversion.txt
-       * - PROD → /buildversion.txt
+       * BUILD FILE PATH
+       * (DEV dan PROD masing-masing ambil dari foldernya sendiri)
        */
-      const BUILD_FILE =
-        ENV === "DEV" ? "buildversion.txt" : "buildversion.txt";
+      const BUILD_FILE = "buildversion.txt";
 
       /**
-       * FALLBACK VERSION
-       * - used if fetch gagal
+       * GLOBAL BUILD VERSION (SAFE INIT)
        */
-      let BUILD_VERSION = "fallback-" + Date.now();
+      let BUILD_VERSION = "init-" + Date.now();
 
-      console.log("🌍 ENV:", ENV);
+      console.log("🌍 ENV:", IS_DEV ? "DEV" : "PROD");
     </script>
 
     <!-- ===================================================== -->
@@ -235,34 +238,29 @@
             if (latest !== lastVersion) {
               console.log("🔥 NEW BUILD DETECTED:", latest);
 
-              // clear cache (important)
+              // clear browser cache (important for Unity WebGL)
               if ("caches" in window) {
-                caches.keys().then((keys) => {
-                  keys.forEach((key) => caches.delete(key));
-                });
+                const keys = await caches.keys();
+                await Promise.all(keys.map((k) => caches.delete(k)));
               }
 
-              location.reload(true);
+              location.reload();
             }
           } catch (e) {
             console.warn("Auto reload check failed");
           }
-        }, 5000); // lebih cepat (5 detik)
+        }, 5000); // cek tiap 5 detik
       }
     </script>
 
     <!-- ===================================================== -->
-    <!-- 🧹 SERVICE WORKER UNREGISTER -->
+    <!-- 🧹 SERVICE WORKER CLEANUP (DEV ONLY SAFE) -->
     <!-- ===================================================== -->
     <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .getRegistrations()
-          .then(function (registrations) {
-            for (let registration of registrations) {
-              registration.unregister();
-            }
-          });
+      if ("serviceWorker" in navigator && IS_DEV) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((reg) => reg.unregister());
+        });
       }
     </script>
 
@@ -272,8 +270,12 @@
     <script>
       function showVersion() {
         const el = document.getElementById("app-version");
-        if (el) {
-          el.innerText = ENV + "v" + VERSION;
+        if (!el) return;
+
+        if (IS_DEV) {
+          el.innerText = `Dev-${BUILD_VERSION} | v${APP_VERSION}`;
+        } else {
+          el.innerText = `v${APP_VERSION}`;
         }
       }
     </script>
