@@ -92,10 +92,10 @@
       }
       #app-version {
         position: fixed;
-        bottom: 10px;
-        left: 10px;
+        bottom: 12px;
+        left: 14px;
         color: #f5c400;
-        font-size: 12px;
+        font-size: 11px;
         opacity: 0.7;
         z-index: 9999;
         pointer-events: none;
@@ -273,7 +273,7 @@
         if (!el) return;
 
         if (IS_DEV) {
-          el.innerText = `Dev-Build-${BUILD_VERSION} | v${APP_VERSION}`;
+          el.innerText = `Dev-${BUILD_VERSION} | v${APP_VERSION}`;
         } else {
           el.innerText = `v${APP_VERSION}`;
         }
