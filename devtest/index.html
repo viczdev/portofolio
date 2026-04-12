@@ -115,166 +115,144 @@
       <canvas id="unity-canvas"></canvas>
     </div>
     <div id="app-version"></div>
+
+    <!-- ===================================================== -->
+    <!-- 🚀 CONFIG SYSTEM -->
+    <!-- ===================================================== -->
     <script>
       /**
-       * ============================================
-       * 🚀 COMMAND SUMMARY (READ THIS FIRST)
-       * ============================================
-       *
-       * [RELEASE FLOW]
-       * 1. Ubah DISPLAY_VERSION (manual)
-       * 2. Build Unity WebGL
-       * 3. Upload ke GitHub Pages
-       *
-       * [CACHE SYSTEM]
-       * - INTERNAL_VERSION = DISPLAY_VERSION + timestamp
-       * - Digunakan untuk bypass browser cache
-       *
-       * [FILES AFFECTED]
-       * - loader.js
-       * - .data
-       * - .framework.js
-       * - .wasm
-       *
-       * [UI]
-       * - DISPLAY_VERSION → ditampilkan ke user
-       * - INTERNAL_VERSION → hanya untuk system
-       *
-       * ============================================
+       * ENV DETECTION
+       * - devtest → DEV
+       * - root → PROD
        */
+      const ENV = window.location.pathname.includes("devtest") ? "DEV" : "PROD";
 
       /**
+       * BUILD FILE LOCATION
+       * - DEV  → /devtest/buildversion.txt
+       * - PROD → /buildversion.txt
+       */
+      const BUILD_FILE =
+        ENV === "DEV" ? "buildversion.txt" : "buildversion.txt";
 
-   * ============================================
-   * 🚀 BUILD VERSION SYSTEM
-   * ============================================
-   *
-   * - buildversion.txt = source of truth dari server
-   * - digunakan untuk:
-   *   ✔ cache busting
-   *   ✔ auto update detection
-   *
-   * ============================================
-   */
+      /**
+       * FALLBACK VERSION
+       * - used if fetch gagal
+       */
+      let BUILD_VERSION = "fallback-" + Date.now();
 
-      const DISPLAY_VERSION = "1.2.2"; // untuk UI saja
-      const VERSION_CHECK_INTERVAL = 15000;
+      console.log("🌍 ENV:", ENV);
+    </script>
 
-      let BUILD_VERSION = null;
+    <!-- ===================================================== -->
+    <!-- 📦 FETCH BUILD VERSION -->
+    <!-- ===================================================== -->
+    <script>
+      async function fetchBuildVersion() {
+        try {
+          const res = await fetch(BUILD_FILE + "?t=" + Date.now(), {
+            cache: "no-store",
+          });
 
-      // ============================================
-      // 📥 LOAD BUILD VERSION FROM SERVER
-      // ============================================
+          if (!res.ok) throw new Error("Build version not found");
 
-      function fetchBuildVersion() {
-        return fetch("buildversion.txt?t=" + Date.now())
-          .then((res) => res.text())
-          .then((v) => v.trim());
+          const text = await res.text();
+          BUILD_VERSION = text.trim();
+
+          console.log("🚀 Build Version:", BUILD_VERSION);
+        } catch (err) {
+          console.warn("⚠️ Failed fetch build version:", err);
+        }
+
+        startUnity();
+        startAutoReload();
+        showVersion();
       }
+    </script>
 
-      // ============================================
-      // 🚀 INIT APP
-      // ============================================
-
-      fetchBuildVersion().then((v) => {
-        BUILD_VERSION = v;
-        startApp(); // loader dipanggil SETELAH ini
-      });
-
-      // ============================================
-      // 🖥️ UI VERSION
-      // ============================================
-
-      window.addEventListener("load", () => {
-        const el = document.getElementById("app-version");
-        if (el) el.innerText = "v" + DISPLAY_VERSION;
-      });
-
-      // ============================================
-      // 📦 LOAD UNITY
-      // ============================================
-
-      function startApp() {
-        const loaderScript = document.createElement("script");
-        loaderScript.src = "Build/devtest.loader.js?v=" + BUILD_VERSION;
-
-        loaderScript.onload = () => {
-          console.log("✅ Loader loaded");
-          startUnity();
-        };
-
-        document.body.appendChild(loaderScript);
-      }
-
-      // ============================================
-      // 🎮 START UNITY
-      // ============================================
-
+    <!-- ===================================================== -->
+    <!-- 🎮 START UNITY -->
+    <!-- ===================================================== -->
+    <script>
       function startUnity() {
         const canvas = document.querySelector("#unity-canvas");
         const loader = document.querySelector("#loader");
         const progressBar = document.querySelector("#progress div");
 
+        const buildUrl = "Build";
+
         const config = {
-          dataUrl: "Build/devtest.data?v=" + BUILD_VERSION,
-
-          frameworkUrl: "Build/devtest.framework.js?v=" + BUILD_VERSION,
-
-          codeUrl: "Build/devtest.wasm?v=" + BUILD_VERSION,
-
+          dataUrl: buildUrl + "/devtest.data?v=" + BUILD_VERSION,
+          frameworkUrl:
+            buildUrl + "/devtest.framework.js?v=" + BUILD_VERSION,
+          codeUrl: buildUrl + "/devtest.wasm?v=" + BUILD_VERSION,
           streamingAssetsUrl: "StreamingAssets",
-
           companyName: "{{COMPANY_NAME}}",
           productName: "{{PRODUCT_NAME}}",
-          productVersion: DISPLAY_VERSION,
+          productVersion: BUILD_VERSION,
         };
 
-        createUnityInstance(canvas, config, (progress) => {
-          progressBar.style.width = progress * 100 + "%";
-        })
-          .then(() => {
-            loader.style.display = "none";
-            resizeCanvas();
+        const script = document.createElement("script");
+        script.src = buildUrl + "/devtest.loader.js?v=" + BUILD_VERSION;
 
-            // 🔄 start auto update
-            startVersionChecker();
+        script.onload = () => {
+          createUnityInstance(canvas, config, (progress) => {
+            progressBar.style.width = progress * 100 + "%";
           })
-          .catch((err) => {
-            console.error(err);
-            alert(err);
-          });
+            .then(() => {
+              loader.style.display = "none";
+            })
+            .catch((err) => {
+              console.error(err);
+              alert(err);
+            });
+        };
+
+        document.body.appendChild(script);
       }
+    </script>
 
-      // ============================================
-      // 🔄 AUTO UPDATE CHECKER
-      // ============================================
+    <!-- ===================================================== -->
+    <!-- 🔄 AUTO RELOAD SYSTEM -->
+    <!-- ===================================================== -->
+    <script>
+      function startAutoReload() {
+        setInterval(async () => {
+          try {
+            const res = await fetch(BUILD_FILE + "?t=" + Date.now(), {
+              cache: "no-store",
+            });
 
-      function startVersionChecker() {
-        console.log("🔄 Version checker started");
+            const latest = (await res.text()).trim();
 
-        setInterval(() => {
-          fetchBuildVersion().then((latestVersion) => {
-            if (latestVersion !== BUILD_VERSION) {
-              console.log("🚨 New build detected:", latestVersion);
-
-              // 🔥 AUTO RELOAD
+            if (latest !== BUILD_VERSION) {
+              console.log("🔄 New build detected:", latest);
               location.reload();
             }
-          });
-        }, VERSION_CHECK_INTERVAL);
+          } catch (e) {
+            console.warn("Auto reload check failed");
+          }
+        }, 10000); // check tiap 10 detik
       }
+    </script>
 
-      // ============================================
-      // 📐 RESPONSIVE
-      // ============================================
-
-      function resizeCanvas() {
-        const canvas = document.querySelector("#unity-canvas");
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
+    <!-- ===================================================== -->
+    <!-- 🏷 VERSION DISPLAY -->
+    <!-- ===================================================== -->
+    <script>
+      function showVersion() {
+        const el = document.getElementById("app-version");
+        if (el) {
+          el.innerText = ENV + " | " + BUILD_VERSION;
+        }
       }
+    </script>
 
-      window.addEventListener("resize", resizeCanvas);
+    <!-- ===================================================== -->
+    <!-- 🚀 INIT -->
+    <!-- ===================================================== -->
+    <script>
+      fetchBuildVersion();
     </script>
   </body>
 </html>
