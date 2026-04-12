@@ -217,6 +217,8 @@
     <!-- ===================================================== -->
     <script>
       function startAutoReload() {
+        let lastVersion = BUILD_VERSION;
+
         setInterval(async () => {
           try {
             const res = await fetch(BUILD_FILE + "?t=" + Date.now(), {
@@ -225,14 +227,37 @@
 
             const latest = (await res.text()).trim();
 
-            if (latest !== BUILD_VERSION) {
-              console.log("🔄 New build detected:", latest);
-              location.reload();
+            if (latest !== lastVersion) {
+              console.log("🔥 NEW BUILD DETECTED:", latest);
+
+              // clear cache (important)
+              if ("caches" in window) {
+                caches.keys().then((keys) => {
+                  keys.forEach((key) => caches.delete(key));
+                });
+              }
+
+              location.reload(true);
             }
           } catch (e) {
             console.warn("Auto reload check failed");
           }
-        }, 10000); // check tiap 10 detik
+        }, 5000); // lebih cepat (5 detik)
+      }
+    </script>
+
+    <!-- ===================================================== -->
+    <!-- 🧹 SERVICE WORKER UNREGISTER -->
+    <!-- ===================================================== -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker
+          .getRegistrations()
+          .then(function (registrations) {
+            for (let registration of registrations) {
+              registration.unregister();
+            }
+          });
       }
     </script>
 
