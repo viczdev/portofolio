@@ -273,7 +273,7 @@
         if (!el) return;
 
         if (IS_DEV) {
-          el.innerText = `Dev-${BUILD_VERSION} | v${APP_VERSION}`;
+          el.innerText = `${BUILD_VERSION} | v${APP_VERSION}`;
         } else {
           el.innerText = `v${APP_VERSION}`;
         }
